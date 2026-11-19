@@ -1,0 +1,444 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gaming World</title>
+
+<style>
+*{box-sizing:border-box}
+
+body{
+ margin:0;
+ font-family:Arial,sans-serif;
+ background:linear-gradient(135deg,#160d35,#482078,#171333);
+ color:white;
+ text-align:center;
+ min-height:100vh;
+ padding:20px 12px;
+}
+
+h1{color:#ffe36e;font-size:36px}
+h2{color:#ffe36e}
+
+.screen{
+ max-width:750px;
+ margin:20px auto;
+ padding:22px;
+ background:#ffffff15;
+ border:1px solid #ffffff30;
+ border-radius:22px;
+}
+
+.hidden{display:none!important}
+
+.photos{
+ display:flex;
+ justify-content:center;
+ flex-wrap:wrap;
+ gap:18px;
+}
+
+.photo{
+ width:260px;
+ padding:10px;
+ border:3px solid transparent;
+ border-radius:15px;
+ background:#ffffff15;
+ cursor:pointer;
+}
+
+.photo.selected{border-color:#ffe36e}
+
+.photo img{
+ width:100%;
+ height:160px;
+ object-fit:cover;
+ border-radius:10px;
+}
+
+button,select{
+ border:0;
+ border-radius:25px;
+ padding:13px 23px;
+ margin:8px;
+ font-size:16px;
+ cursor:pointer;
+}
+
+button{
+ background:#ffe34d;
+ color:#251544;
+ font-weight:bold;
+}
+
+.secondary{background:#e7dcff}
+
+.stats{
+ display:flex;
+ justify-content:center;
+ flex-wrap:wrap;
+ gap:10px;
+ margin:18px;
+}
+
+.stat{
+ background:#160c35;
+ padding:12px 18px;
+ border-radius:12px;
+}
+
+.stat strong{
+ display:block;
+ color:#ffe36e;
+ font-size:22px;
+ margin-top:6px;
+}
+
+#puzzle{
+ display:grid;
+ grid-template-columns:repeat(4,1fr);
+ gap:4px;
+ width:min(90vw,420px);
+ aspect-ratio:1;
+ margin:20px auto;
+ padding:5px;
+ background:#ffe36e;
+ border-radius:12px;
+}
+
+.tile{
+ min-width:0;
+ border:2px solid #ffffff70;
+ border-radius:5px;
+ cursor:pointer;
+ background-repeat:no-repeat;
+}
+
+.tile.selected{
+ border:4px solid #ffeb55;
+ filter:brightness(1.3);
+}
+
+#preview{
+ width:min(75vw,250px);
+ border-radius:12px;
+ margin:12px auto;
+}
+
+#win{
+ background:#fff0a8;
+ color:#32134d;
+ border-radius:18px;
+ padding:20px;
+ margin:20px auto;
+}
+
+#win h2{font-size:38px;color:#6732a1}
+
+#confetti{
+ position:fixed;
+ inset:0;
+ width:100%;
+ height:100%;
+ pointer-events:none;
+ z-index:10;
+}
+</style>
+</head>
+
+<body>
+
+<canvas id="confetti"></canvas>
+
+<h1>🎮 Gaming World</h1>
+<p>🌸 College Picture Puzzle Challenge 🌸</p>
+
+<!-- SCREEN 1 : PHOTO SELECTION -->
+
+<section id="home" class="screen">
+
+<h2>🖼️ Choose Your College Picture</h2>
+
+<div class="photos">
+
+<div class="photo selected" onclick="choose(0,this)">
+<img src="images/ChatGPT Image Nov 18, 2026, 02_46_16 PM.jpg">
+<p>College Building 🌳</p>
+</div>
+
+<div class="photo" onclick="choose(1,this)">
+<img src="images/ChatGPT Image Nov 18, 2026, 02_46_28 PM.jpg">
+<p>College Campus 🌅</p>
+</div>
+
+</div>
+
+<br>
+<button onclick="goGame()">NEXT ➜</button>
+
+</section>
+
+
+<!-- SCREEN 2 : PUZZLE GAME -->
+
+<section id="game" class="screen hidden">
+
+<h2>🧩 Picture Puzzle</h2>
+<p>Arrange all 16 pieces correctly!</p>
+
+<div class="stats">
+ <div class="stat">⏱️ TIME<strong id="timer">01:30</strong></div>
+ <div class="stat">🔄 MOVES<strong id="moves">0</strong></div>
+ <div class="stat">🏆 HIGH SCORE<strong id="high">0</strong></div>
+</div>
+
+<h3>⭐ Difficulty: 4 × 4</h3>
+
+<div id="puzzle"></div>
+
+<h3>👀 Original Picture</h3>
+<img id="preview" src="" alt="College Picture">
+
+<div id="win" class="hidden">
+ <h2>🎉 YOU WIN! 🎉</h2>
+ <h3>Congratulations! 🏆</h3>
+ <p>You completed the puzzle!</p>
+</div>
+
+<p id="message"></p>
+
+<button onclick="startGame()">↻ RESTART</button>
+<button class="secondary" onclick="goHome()">⬅ BACK</button>
+
+</section>
+
+
+<script>
+
+const photos=[
+ "images/ChatGPT Image Nov 18, 2026, 02_46_16 PM.jpg",
+ "images/ChatGPT Image Nov 18, 2026, 02_46_28 PM.jpg"
+];
+
+let chosen=0;
+let order=[];
+let selected=null;
+let moves=0;
+let seconds=90;
+let running=false;
+let interval=null;
+
+function choose(index,element){
+ chosen=index;
+ document.querySelectorAll(".photo")
+ .forEach(p=>p.classList.remove("selected"));
+ element.classList.add("selected");
+}
+
+function goGame(){
+ document.getElementById("home").classList.add("hidden");
+ document.getElementById("game").classList.remove("hidden");
+ document.getElementById("preview").src=photos[chosen];
+ startGame();
+ window.scrollTo(0,0);
+}
+
+function goHome(){
+ clearInterval(interval);
+ running=false;
+ document.getElementById("game").classList.add("hidden");
+ document.getElementById("home").classList.remove("hidden");
+ window.scrollTo(0,0);
+}
+
+function showTime(){
+ let m=Math.floor(seconds/60);
+ let s=seconds%60;
+ document.getElementById("timer").textContent=
+ String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+}
+
+function startGame(){
+
+ clearInterval(interval);
+
+ order=Array.from({length:16},(_,i)=>i);
+
+ for(let i=15;i>0;i--){
+  let j=Math.floor(Math.random()*(i+1));
+  [order[i],order[j]]=[order[j],order[i]];
+ }
+
+ if(order.every((v,i)=>v===i)){
+  [order[0],order[1]]=[order[1],order[0]];
+ }
+
+ moves=0;
+ seconds=90;
+ selected=null;
+ running=true;
+
+ document.getElementById("moves").textContent=0;
+ document.getElementById("win").classList.add("hidden");
+ document.getElementById("message").textContent="";
+
+ showTime();
+ render();
+
+ interval=setInterval(()=>{
+  if(!running)return;
+  seconds--;
+  showTime();
+
+  if(seconds<=0){
+   clearInterval(interval);
+   running=false;
+   document.getElementById("message").textContent=
+   "⏰ Time's Up! Try Again!";
+  }
+ },1000);
+}
+
+function render(){
+
+ const puzzle=document.getElementById("puzzle");
+ puzzle.innerHTML="";
+
+ order.forEach((piece,pos)=>{
+
+  let tile=document.createElement("div");
+  tile.className="tile";
+
+  let row=Math.floor(piece/4);
+  let col=piece%4;
+
+  tile.style.backgroundImage=`url("${photos[chosen]}")`;
+  tile.style.backgroundSize="400% 400%";
+  tile.style.backgroundPosition=
+  `${col*100/3}% ${row*100/3}%`;
+
+  if(selected===pos)tile.classList.add("selected");
+
+  tile.onclick=()=>selectTile(pos);
+  puzzle.appendChild(tile);
+
+ });
+}
+
+function selectTile(pos){
+
+ if(!running)return;
+
+ if(selected===null){
+  selected=pos;
+  render();
+  return;
+ }
+
+ if(selected===pos){
+  selected=null;
+  render();
+  return;
+ }
+
+ [order[selected],order[pos]]=
+ [order[pos],order[selected]];
+
+ selected=null;
+ moves++;
+
+ document.getElementById("moves").textContent=moves;
+
+ render();
+
+ if(order.every((v,i)=>v===i)){
+  winGame();
+ }
+}
+
+function winGame(){
+
+ clearInterval(interval);
+ running=false;
+
+ document.getElementById("win").classList.remove("hidden");
+ document.getElementById("message").textContent=
+ "🌸 Amazing! You did it! 🌸";
+
+ let score=Math.max(1,seconds*10+Math.max(0,100-moves));
+ let old=Number(localStorage.getItem("highScore")||0);
+
+ if(score>old){
+  localStorage.setItem("highScore",score);
+ }
+
+ document.getElementById("high").textContent=
+ localStorage.getItem("highScore")||0;
+
+ celebration();
+}
+
+document.getElementById("high").textContent=
+ localStorage.getItem("highScore")||0;
+
+function celebration(){
+
+ const canvas=document.getElementById("confetti");
+ const ctx=canvas.getContext("2d");
+
+ canvas.width=innerWidth;
+ canvas.height=innerHeight;
+
+ let pieces=Array.from({length:160},()=>({
+  x:Math.random()*canvas.width,
+  y:-Math.random()*canvas.height,
+  speed:Math.random()*5+2,
+  color:["#ff4d8d","#ffe34d","#51e5ff","#b98cff","#64ff9b"][Math.floor(Math.random()*5)]
+ }));
+
+ let frame=0;
+
+ function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  pieces.forEach(p=>{
+   ctx.fillStyle=p.color;
+   ctx.fillRect(p.x,p.y,7,7);
+   p.y+=p.speed;
+  });
+
+  frame++;
+
+  if(frame<180)requestAnimationFrame(draw);
+  else ctx.clearRect(0,0,canvas.width,canvas.height);
+ }
+
+ draw();
+
+ try{
+  const audio=new(window.AudioContext||window.webkitAudioContext)();
+
+  [523,659,784,1046].forEach((freq,i)=>{
+   let osc=audio.createOscillator();
+   let gain=audio.createGain();
+
+   osc.connect(gain);
+   gain.connect(audio.destination);
+   osc.frequency.value=freq;
+
+   gain.gain.setValueAtTime(.12,audio.currentTime+i*.18);
+   gain.gain.exponentialRampToValueAtTime(
+    .001,audio.currentTime+i*.18+.35
+   );
+
+   osc.start(audio.currentTime+i*.18);
+   osc.stop(audio.currentTime+i*.18+.35);
+  });
+ }catch(e){}
+}
+
+</script>
+</body>
+</html>
